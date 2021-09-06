@@ -1,0 +1,42 @@
+name: Python
+
+on:
+  push:
+    branches: [ "build-*" ]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - target_type: x86
+          arch: win32
+          sdk_version: "10.0.15063.0"
+        - target_type: x64
+          arch: amd64
+          sdk_version: "10.0.15063.0"
+
+    runs-on: windows-2016
+
+    steps:
+    - name: "Disable git autoCRLF"
+      run: git config --global core.autoCRLF false
+
+    - uses: actions/checkout@v2
+
+    - name: Build
+      run: cmd /c prepare.bat --install-cygwin -${{ matrix.target_type }}
+      env:
+        LIBFFI_SOURCE: ${{ github.workspace }}
+        VCVARSALL: C:\Program Files (x86)\Microsoft Visual Studio\2017\Enterprise\VC\Auxiliary\Build\vcvarsall.bat
+        SDK_VERSION: ${{ matrix.sdk_version }}
+
+    - name: Compress
+      run: 7z a ${{ matrix.arch }}.zip ${{ matrix.arch }}
+      working-directory: output
+
+    - uses: actions/upload-artifact@v2
+      with:
+        name: Library
+        path: output/*.zip
